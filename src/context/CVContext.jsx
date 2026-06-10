@@ -6,7 +6,7 @@ const initialCVData = {
   personalInfo: {
     fullName: '',
     profession: '',
-    location: '',
+    city: '',
     email: '',
     phone: '',
     profile: '',
