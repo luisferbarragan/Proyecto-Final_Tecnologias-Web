@@ -14,6 +14,7 @@ const initialCVData = {
     linkedin: '',
     portfolio: '',
     profileImage: '',
+    city: '',
   },
   skills: [],
   projects: [],
