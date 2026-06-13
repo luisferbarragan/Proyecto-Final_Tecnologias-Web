@@ -2,6 +2,19 @@ import { createContext, useContext, useState } from 'react'
 
 const CVContext = createContext()
 
+const createSkillId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+const normalizeSkill = (skill, index) =>
+  typeof skill === 'string'
+    ? { id: `legacy-skill-${index}`, name: skill }
+    : skill
+
 const initialCVData = {
   personalInfo: {
     fullName: '',
@@ -35,9 +48,55 @@ export function CVProvider({ children }) {
   }
 
   const addSkill = (skill) => {
+    const trimmedSkill = skill.trim()
+
+    if (!trimmedSkill) {
+      return
+    }
+
     setCVData((prevData) => ({
       ...prevData,
-      skills: [...prevData.skills, skill],
+      skills: [
+        ...prevData.skills.map(normalizeSkill),
+        {
+          id: createSkillId(),
+          name: trimmedSkill,
+        },
+      ],
+    }))
+  }
+
+  const updateSkill = (skillId, nextSkill) => {
+    const trimmedSkill = nextSkill.trim()
+
+    if (!trimmedSkill) {
+      return
+    }
+
+    setCVData((prevData) => ({
+      ...prevData,
+      skills: prevData.skills.map((skill, index) => {
+        const normalizedSkill = normalizeSkill(skill, index)
+
+        if (normalizedSkill.id !== skillId) {
+          return normalizedSkill
+        }
+
+        return {
+          ...normalizedSkill,
+          name: trimmedSkill,
+        }
+      }),
+    }))
+  }
+
+  const deleteSkill = (skillId) => {
+    setCVData((prevData) => ({
+      ...prevData,
+      skills: prevData.skills.filter((skill, index) => {
+        const normalizedSkill = normalizeSkill(skill, index)
+        return normalizedSkill.id !== skillId
+      }),
     }))
   }
 
@@ -62,6 +121,8 @@ export function CVProvider({ children }) {
         setCVData,
         updatePersonalInfo,
         addSkill,
+        updateSkill,
+        deleteSkill,
         addProject,
         addEducation,
       }}

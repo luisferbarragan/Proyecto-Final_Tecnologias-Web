@@ -53,6 +53,11 @@
   gap: 24px;
 }
 
+.editor-stack {
+  display: grid;
+  gap: 24px;
+}
+
 .editor-section h2,
 .profile-preview h2,
 .preview-card h2,
@@ -186,4 +191,167 @@
 
 .preview-avatar--empty {
   min-height: 160px;
+}
+
+.skills-section {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+@media (prefers-color-scheme: dark) {
+  .skills-section {
+    background: rgba(18, 19, 24, 0.62);
+  }
+}
+
+.skill-form {
+  display: grid;
+  gap: 16px;
+}
+
+.skill-form-actions,
+.skill-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn--secondary {
+  background: transparent;
+  color: var(--text-h);
+  border: 1px solid var(--border);
+}
+
+.skills-list {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.skill-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+@media (prefers-color-scheme: dark) {
+  .skill-item {
+    background: rgba(18, 19, 24, 0.75);
+  }
+}
+
+.skill-item span {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.skill-action-button {
+  padding: 0.65rem 0.95rem;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.skill-action-button:hover {
+  transform: translateY(-1px);
+}
+
+.skill-action-button--edit {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.skill-action-button--delete {
+  background: rgba(239, 68, 68, 0.14);
+  color: #b91c1c;
+}
+
+.skills-empty-state {
+  color: var(--text);
+  opacity: 0.8;
+}
+
+.education-section {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+@media (prefers-color-scheme: dark) {
+  .education-section {
+    background: rgba(18, 19, 24, 0.62);
+  }
+}
+
+.education-form {
+  display: grid;
+  gap: 16px;
+}
+
+.education-list {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.education-item {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+@media (prefers-color-scheme: dark) {
+  .education-item {
+    background: rgba(18, 19, 24, 0.75);
+  }
+}
+
+.education-item-header {
+  display: grid;
+  gap: 4px;
+}
+
+.education-item-header strong {
+  color: var(--text-h);
+  font-size: 1rem;
+}
+
+.education-item-header span,
+.education-item-period,
+.education-item-description {
+  color: var(--text);
+}
+
+.education-item-period {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.education-item-description {
+  margin: 0;
+}
+
+.education-empty-state {
+  color: var(--text);
+  opacity: 0.8;
 }

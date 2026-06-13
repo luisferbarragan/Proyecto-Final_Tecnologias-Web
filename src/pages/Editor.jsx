@@ -1,4 +1,6 @@
 import { useCV } from '../context/CVContext'
+import SkillForm from '../components/SkillForm'
+import EducationForm from '../components/EducationForm'
 import '../styles/cv-form.css'
 
 function Editor() {
@@ -37,7 +39,8 @@ function Editor() {
       </div>
 
       <div className="editor-layout">
-        <form className="editor-card editor-form">
+        <div className="editor-card editor-stack">
+          <form className="editor-form">
           <div className="editor-grid">
             <label className="field">
               <span className="field-label">Nombre</span>
@@ -179,7 +182,12 @@ function Editor() {
               </label>
             </div>
           </div>
-        </form>
+          </form>
+
+          <SkillForm />
+
+          <EducationForm />
+        </div>
 
         <aside className="editor-card profile-preview">
           <p className="editor-kicker">Vista rápida</p>
