@@ -1,110 +1,99 @@
 import { useState } from 'react'
 import { useCV } from '../context/CVContext'
+import SkillCard from './SkillCard'
 
 function SkillForm() {
-  const { cvData, addSkill, updateSkill, deleteSkill } = useCV()
-  const skills = cvData.skills.map((skill, index) =>
-    typeof skill === 'string'
-      ? { id: `legacy-skill-${index}`, name: skill }
-      : skill,
-  )
+  const { cvData, addSkill } = useCV()
 
-  const [skillName, setSkillName] = useState('')
-  const [editingSkillId, setEditingSkillId] = useState(null)
+  const [skillData, setSkillData] = useState({
+    name: '',
+    category: '',
+    level: '',
+    description: '',
+  })
 
-  const resetForm = () => {
-    setSkillName('')
-    setEditingSkillId(null)
-  }
+  const handleChange = (event) => {
+    const { name, value } = event.target
 
-  const handleEdit = (skill) => {
-    setSkillName(skill.name)
-    setEditingSkillId(skill.id)
-  }
-
-  const handleDelete = (skillId) => {
-    deleteSkill(skillId)
-
-    if (editingSkillId === skillId) {
-      resetForm()
-    }
+    setSkillData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }))
   }
 
   const handleSubmit = (event) => {
     event.preventDefault()
 
-    if (!skillName.trim()) return
+    if (!skillData.name.trim()) return
 
-    if (editingSkillId) {
-      updateSkill(editingSkillId, skillName)
-    } else {
-      addSkill(skillName)
-    }
+    addSkill(skillData)
 
-    resetForm()
+    setSkillData({
+      name: '',
+      category: '',
+      level: '',
+      description: '',
+    })
   }
 
   return (
-    <section className="editor-section skills-section">
+    <section className="form-section">
       <h2>Habilidades</h2>
 
-      <form onSubmit={handleSubmit} className="skill-form">
-        <div className="field field--full">
-          <label className="field-label">Nombre de la habilidad</label>
-
+      <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label>Habilidad</label>
           <input
-            className="field-input"
             type="text"
-            value={skillName}
-            onChange={(event) => setSkillName(event.target.value)}
-            placeholder="Ej. React, JavaScript, Docker"
+            name="name"
+            value={skillData.name}
+            onChange={handleChange}
+            placeholder="Ej. React"
           />
         </div>
 
-        <div className="skill-form-actions">
-          <button className="btn" type="submit">
-            {editingSkillId ? 'Guardar cambios' : 'Agregar habilidad'}
-          </button>
-
-          {editingSkillId ? (
-            <button className="btn btn--secondary" type="button" onClick={resetForm}>
-              Cancelar edición
-            </button>
-          ) : null}
+        <div className="form-group">
+          <label>Categoría</label>
+          <input
+            type="text"
+            name="category"
+            value={skillData.category}
+            onChange={handleChange}
+            placeholder="Ej. Frontend"
+          />
         </div>
+
+        <div className="form-group">
+          <label>Nivel</label>
+          <select
+            name="level"
+            value={skillData.level}
+            onChange={handleChange}
+          >
+            <option value="">Selecciona un nivel</option>
+            <option value="Básico">Básico</option>
+            <option value="Intermedio">Intermedio</option>
+            <option value="Avanzado">Avanzado</option>
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label>Descripción</label>
+          <textarea
+            name="description"
+            value={skillData.description}
+            onChange={handleChange}
+            placeholder="Describe brevemente tu experiencia con esta habilidad"
+          />
+        </div>
+
+        <button type="submit">Agregar habilidad</button>
       </form>
 
-      <div>
-        <h3>Lista de habilidades</h3>
-
-        {skills.length > 0 ? (
-          <ul className="skills-list">
-            {skills.map((skill) => (
-              <li key={skill.id} className="skill-item">
-                <span>{skill.name}</span>
-
-                <div className="skill-item-actions">
-                  <button
-                    className="skill-action-button skill-action-button--edit"
-                    type="button"
-                    onClick={() => handleEdit(skill)}
-                  >
-                    Editar
-                  </button>
-                  <button
-                    className="skill-action-button skill-action-button--delete"
-                    type="button"
-                    onClick={() => handleDelete(skill.id)}
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="skills-empty-state">Todavía no has agregado habilidades.</p>
-        )}
+      <div className="skills-list">
+        {cvData.skills.map((skill, index) => (
+          <SkillCard key={index} skill={skill} />
+        ))}
       </div>
     </section>
   )
