@@ -394,3 +394,14 @@
   border-radius: 12px;
   margin-top: 10px;
 }
+
+.field-error {
+  color: #dc2626;
+  font-size: 0.85rem;
+  margin-top: 6px;
+  display: block;
+}
+
+.field-input.error {
+  border-color: #dc2626;
+}

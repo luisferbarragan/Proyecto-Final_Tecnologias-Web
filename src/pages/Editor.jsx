@@ -3,14 +3,60 @@ import SkillForm from '../components/SkillForm'
 import EducationForm from '../components/EducationForm'
 import '../styles/cv-form.css'
 import ProjectForm from '../components/ProjectForm'
+import { useState } from 'react'
+import {
+  validateRequired,
+  validateEmail,
+  validateUrl,
+  validateMinLength,
+  validateMaxLength,
+} from '../utils/validations'
+
 
 function Editor() {
   const { cvData, updatePersonalInfo } = useCV()
   const { personalInfo } = cvData
+  const [errors, setErrors] = useState({})
+
+  const validateField = (name, value) => {
+  let error = ''
+
+  if (['fullName', 'profession', 'city', 'email', 'profile'].includes(name)) {
+    if (!validateRequired(value)) {
+      error = 'Este campo es obligatorio.'
+    }
+  }
+
+  if (!error && name === 'email' && !validateEmail(value)) {
+    error = 'Ingresa un correo electrónico válido.'
+  }
+
+  if (
+    !error &&
+    ['github', 'linkedin', 'portfolio', 'profileImage'].includes(name) &&
+    !validateUrl(value)
+  ) {
+    error = 'Ingresa una URL válida.'
+  }
+
+  if (!error && name === 'profile' && !validateMinLength(value, 20)) {
+    error = 'El perfil debe tener al menos 20 caracteres.'
+  }
+
+  if (!error && name === 'profile' && !validateMaxLength(value, 300)) {
+    error = 'El perfil no debe superar los 300 caracteres.'
+  }
+
+  setErrors((prevErrors) => ({
+    ...prevErrors,
+    [name]: error,
+  }))
+}
 
   const handleTextChange = (event) => {
     const { name, value } = event.target
     updatePersonalInfo(name, value)
+    validateField(name, value)
   }
 
   const handleImageUpload = (event) => {
@@ -53,6 +99,7 @@ function Editor() {
                 onChange={handleTextChange}
                 placeholder="Tu nombre completo"
               />
+              {errors.fullName && <span className="field-error">{errors.fullName}</span>}
             </label>
 
             <label className="field">
@@ -65,6 +112,7 @@ function Editor() {
                 onChange={handleTextChange}
                 placeholder="Diseñador UI, Ingeniero de software..."
               />
+              {errors.profession && <span className="field-error">{errors.profession}</span>}
             </label>
 
             <label className="field">
@@ -77,6 +125,7 @@ function Editor() {
                 onChange={handleTextChange}
                 placeholder="Ciudad de residencia"
               />
+              {errors.city && <span className="field-error">{errors.city}</span>}
             </label>
 
             <label className="field">
@@ -89,6 +138,7 @@ function Editor() {
                 onChange={handleTextChange}
                 placeholder="correo@ejemplo.com"
               />
+              {errors.email && <span className="field-error">{errors.email}</span>}
             </label>
 
             <label className="field">
@@ -101,6 +151,7 @@ function Editor() {
                 onChange={handleTextChange}
                 placeholder="+52 55 0000 0000"
               />
+              {errors.phone && <span className="field-error">{errors.phone}</span>}
             </label>
 
             <label className="field field--full">
@@ -113,6 +164,7 @@ function Editor() {
                 placeholder="Resume brevemente tu experiencia, enfoque y objetivos profesionales."
                 rows="5"
               />
+              {errors.profile && <span className="field-error">{errors.profile}</span>}
             </label>
           </div>
 
@@ -129,6 +181,7 @@ function Editor() {
                   onChange={handleTextChange}
                   placeholder="https://github.com/tuusuario"
                 />
+                {errors.github && <span className="field-error">{errors.github}</span>}
               </label>
 
               <label className="field">
@@ -141,6 +194,7 @@ function Editor() {
                   onChange={handleTextChange}
                   placeholder="https://linkedin.com/in/tuusuario"
                 />
+                {errors.linkedin && <span className="field-error">{errors.linkedin}</span>}
               </label>
 
               <label className="field field--full">
@@ -153,6 +207,7 @@ function Editor() {
                   onChange={handleTextChange}
                   placeholder="https://tusitio.com"
                 />
+                {errors.portfolio && <span className="field-error">{errors.portfolio}</span>}
               </label>
             </div>
           </div>
@@ -170,6 +225,7 @@ function Editor() {
                   onChange={handleTextChange}
                   placeholder="https://ejemplo.com/imagen.jpg"
                 />
+                {errors.profileImage && <span className="field-error">{errors.profileImage}</span>}
               </label>
 
               <label className="field field--full">
@@ -180,6 +236,7 @@ function Editor() {
                   accept="image/*"
                   onChange={handleImageUpload}
                 />
+                {errors.profileImage && <span className="field-error">{errors.profileImage}</span>}
               </label>
             </div>
           </div>
