@@ -107,6 +107,24 @@ export function CVProvider({ children }) {
     }))
   }
 
+  const updateProject = (projectId, updatedProject) => {
+  setCVData((prevData) => ({
+    ...prevData,
+    projects: prevData.projects.map((project) =>
+      project.id === projectId
+        ? { ...project, ...updatedProject }
+        : project
+    ),
+  }))
+}
+
+const deleteProject = (projectId) => {
+  setCVData((prevData) => ({
+    ...prevData,
+    projects: prevData.projects.filter((project) => project.id !== projectId),
+  }))
+}
+
   const addEducation = (educationItem) => {
     setCVData((prevData) => ({
       ...prevData,
@@ -125,6 +143,8 @@ export function CVProvider({ children }) {
         deleteSkill,
         addProject,
         addEducation,
+        updateProject,
+        deleteProject
       }}
     >
       {children}
