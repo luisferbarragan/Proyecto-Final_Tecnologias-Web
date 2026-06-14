@@ -1,8 +1,12 @@
+import SkillChart from '../components/SkillChart'
+
 function Dashboard() {
   return (
-    <section>
+    <section className="container">
       <h1>Dashboard de habilidades</h1>
-      <p>Aquí se mostrará la gráfica dinámica de habilidades.</p>
+      <p>Visualización dinámica de las habilidades registradas en el CV.</p>
+
+      <SkillChart />
     </section>
   )
 }
