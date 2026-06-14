@@ -1,9 +1,18 @@
 import { useState } from 'react'
 import { useCV } from '../context/CVContext'
+import ProjectCard from './ProjectCard'
 
 function ProjectForm() {
-  const { cvData, addProject } = useCV()
+  const {
+    cvData,
+    addProject,
+    updateProject,
+    deleteProject,
+  } = useCV()
+
   const { projects } = cvData
+
+  const [editingProjectId, setEditingProjectId] = useState(null)
 
   const [projectData, setProjectData] = useState({
     name: '',
@@ -26,12 +35,17 @@ function ProjectForm() {
   const handleSubmit = (event) => {
     event.preventDefault()
 
-    const newProject = {
-      id: Date.now(),
-      ...projectData,
-    }
+    if (editingProjectId) {
+      updateProject(editingProjectId, projectData)
+      setEditingProjectId(null)
+    } else {
+      const newProject = {
+        id: Date.now(),
+        ...projectData,
+      }
 
-    addProject(newProject)
+      addProject(newProject)
+    }
 
     setProjectData({
       name: '',
@@ -43,15 +57,35 @@ function ProjectForm() {
     })
   }
 
+  const handleEdit = (project) => {
+    setEditingProjectId(project.id)
+
+    setProjectData({
+      name: project.name,
+      description: project.description,
+      technologies: project.technologies,
+      repository: project.repository,
+      deploy: project.deploy,
+      image: project.image,
+    })
+  }
+
   return (
     <section className="editor-card editor-form">
       <h2>Proyectos</h2>
-      <p>Agrega proyectos profesionales, escolares o personales para mostrarlos en tu CV.</p>
+
+      <p>
+        Agrega proyectos profesionales, escolares o personales
+        para mostrarlos en tu CV.
+      </p>
 
       <form onSubmit={handleSubmit}>
         <div className="editor-grid">
           <label className="field">
-            <span className="field-label">Nombre del proyecto</span>
+            <span className="field-label">
+              Nombre del proyecto
+            </span>
+
             <input
               className="field-input"
               type="text"
@@ -64,7 +98,10 @@ function ProjectForm() {
           </label>
 
           <label className="field">
-            <span className="field-label">Tecnologías utilizadas</span>
+            <span className="field-label">
+              Tecnologías utilizadas
+            </span>
+
             <input
               className="field-input"
               type="text"
@@ -77,7 +114,10 @@ function ProjectForm() {
           </label>
 
           <label className="field field--full">
-            <span className="field-label">Descripción</span>
+            <span className="field-label">
+              Descripción
+            </span>
+
             <textarea
               className="field-input field-textarea"
               name="description"
@@ -90,7 +130,10 @@ function ProjectForm() {
           </label>
 
           <label className="field">
-            <span className="field-label">Repositorio</span>
+            <span className="field-label">
+              Repositorio
+            </span>
+
             <input
               className="field-input"
               type="url"
@@ -102,7 +145,10 @@ function ProjectForm() {
           </label>
 
           <label className="field">
-            <span className="field-label">Deploy</span>
+            <span className="field-label">
+              Deploy
+            </span>
+
             <input
               className="field-input"
               type="url"
@@ -114,7 +160,10 @@ function ProjectForm() {
           </label>
 
           <label className="field field--full">
-            <span className="field-label">Imagen o captura</span>
+            <span className="field-label">
+              Imagen o captura
+            </span>
+
             <input
               className="field-input"
               type="url"
@@ -127,7 +176,9 @@ function ProjectForm() {
         </div>
 
         <button className="primary-button" type="submit">
-          Agregar proyecto
+          {editingProjectId
+            ? 'Actualizar proyecto'
+            : 'Agregar proyecto'}
         </button>
       </form>
 
@@ -139,39 +190,12 @@ function ProjectForm() {
         ) : (
           <div className="project-list">
             {projects.map((project) => (
-              <article className="project-card" key={project.id}>
-                <h4>{project.name}</h4>
-                <p>{project.description}</p>
-                <p>
-                  <strong>Tecnologías:</strong> {project.technologies}
-                </p>
-
-                {project.repository && (
-                  <p>
-                    <strong>Repositorio:</strong>{' '}
-                    <a href={project.repository} target="_blank" rel="noreferrer">
-                      Ver repositorio
-                    </a>
-                  </p>
-                )}
-
-                {project.deploy && (
-                  <p>
-                    <strong>Deploy:</strong>{' '}
-                    <a href={project.deploy} target="_blank" rel="noreferrer">
-                      Ver proyecto
-                    </a>
-                  </p>
-                )}
-
-                {project.image && (
-                  <img
-                    className="project-image"
-                    src={project.image}
-                    alt={`Captura de ${project.name}`}
-                  />
-                )}
-              </article>
+              <ProjectCard
+                key={project.id}
+                project={project}
+                onEdit={handleEdit}
+                onDelete={deleteProject}
+              />
             ))}
           </div>
         )}
