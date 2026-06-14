@@ -2,6 +2,7 @@ import { useCV } from '../context/CVContext'
 import SkillForm from '../components/SkillForm'
 import EducationForm from '../components/EducationForm'
 import '../styles/cv-form.css'
+import ProjectForm from '../components/ProjectForm'
 
 function Editor() {
   const { cvData, updatePersonalInfo } = useCV()
@@ -215,6 +216,7 @@ function Editor() {
           </div>
         </aside>
       </div>
+      <ProjectForm />
     </section>
   )
 }
