@@ -56,3 +56,76 @@
         grid-template-columns: repeat(3, 1fr);
     }
 }
+
+/* páginas informativas */
+.page {
+    width: min(1100px, 100%);
+    margin: 0 auto;
+    padding: 2rem 1rem 3rem;
+    display: grid;
+    gap: 1.5rem;
+}
+
+.page-hero {
+    text-align: left;
+    padding: 2rem;
+    border: 1px solid rgba(124, 58, 237, 0.12);
+    background: var(--surface-elevated);
+}
+
+.page-hero .eyebrow {
+    display: inline-block;
+    margin-bottom: 0.85rem;
+    font-size: 0.9rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+
+.page-text {
+    margin-top: 1rem;
+    max-width: 720px;
+    color: var(--text);
+    line-height: 1.9;
+}
+
+.page-grid {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.info-card {
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    min-height: 170px;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.info-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.about-note,
+.page-cta {
+    padding: 1.8rem 1.5rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.about-note h2,
+.page-cta h2 {
+    margin-bottom: 0.75rem;
+}
+
+@media (min-width: 768px) {
+    .page-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 900px) {
+    .page-home .page-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
