@@ -14,28 +14,20 @@ function SkillChart() {
   const skills = cvData.skills || []
 
   const getLevelValue = (level) => {
-    switch (level) {
-      case 'Básico':
-        return 33
+    const normalizedLevel = String(level || '').trim().toLowerCase()
 
-      case 'Intermedio':
-        return 66
+    if (normalizedLevel.startsWith('b')) return 33
+    if (normalizedLevel.startsWith('i')) return 66
+    if (normalizedLevel.startsWith('a')) return 100
 
-      case 'Avanzado':
-        return 100
-
-      default:
-        return Number(level) || 0
-    }
+    return Number(level) || 0
   }
 
   if (skills.length === 0) {
     return (
       <div className="chart-empty">
-        <p>No hay habilidades registradas todavía.</p>
-        <p>
-          Cuando se agreguen habilidades, aparecerán en esta gráfica.
-        </p>
+        <p>No hay habilidades registradas todavia.</p>
+        <p>Cuando se agreguen habilidades, apareceran en esta grafica.</p>
       </div>
     )
   }
@@ -47,7 +39,7 @@ function SkillChart() {
 
   return (
     <div className="chart-container">
-      <h2>Gráfica de habilidades</h2>
+      <h2>Grafica de habilidades</h2>
 
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={chartData}>

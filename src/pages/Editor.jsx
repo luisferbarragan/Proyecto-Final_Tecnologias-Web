@@ -3,6 +3,7 @@ import SkillForm from '../components/SkillForm'
 import EducationForm from '../components/EducationForm'
 import '../styles/cv-form.css'
 import ProjectForm from '../components/ProjectForm'
+import LanguageForm from '../components/LanguageForm'
 import { useState } from 'react'
 import {
   validateRequired,
@@ -17,6 +18,12 @@ function Editor() {
   const { cvData, updatePersonalInfo } = useCV()
   const { personalInfo } = cvData
   const [errors, setErrors] = useState({})
+  const hasDisplayableProfileImage =
+    Boolean(personalInfo.profileImage) &&
+    (
+      String(personalInfo.profileImage).startsWith('data:image/') ||
+      validateUrl(String(personalInfo.profileImage))
+    )
 
   const validateField = (name, value) => {
   let error = ''
@@ -66,10 +73,22 @@ function Editor() {
       return
     }
 
+    if (!file.type.startsWith('image/')) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        profileImage: 'Selecciona un archivo de imagen valido.',
+      }))
+      return
+    }
+
     const reader = new FileReader()
 
     reader.onload = () => {
       updatePersonalInfo('profileImage', String(reader.result ?? ''))
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        profileImage: '',
+      }))
     }
 
     reader.readAsDataURL(file)
@@ -245,13 +264,15 @@ function Editor() {
           <SkillForm />
 
           <EducationForm />
+
+          <LanguageForm />
         </div>
 
         <aside className="editor-card profile-preview">
           <p className="editor-kicker">Vista rápida</p>
           <h2>Tu perfil</h2>
 
-          {personalInfo.profileImage ? (
+          {hasDisplayableProfileImage ? (
             <img
               className="profile-preview-image"
               src={personalInfo.profileImage}
