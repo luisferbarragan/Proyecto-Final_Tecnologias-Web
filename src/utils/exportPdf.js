@@ -9,7 +9,7 @@ const ACCENT_COLOR = [37, 99, 235]
 const TEXT_COLOR = [28, 34, 48]
 const MUTED_COLOR = [94, 104, 121]
 const BORDER_COLOR = [224, 229, 238]
-const CARD_FILL = [248, 250, 252]
+const CARD_FILL = [249, 250, 255]
 
 function normalizeText(value, fallback = '') {
   return String(value ?? '').trim() || fallback
@@ -17,13 +17,32 @@ function normalizeText(value, fallback = '') {
 
 function normalizeUrl(value) {
   const text = normalizeText(value)
-  return text ? text.replace(/^https?:\/\//i, '') : ''
+  return text ? text.replace(/^https?:\/\//i, '').replace(/^www\./i, '') : ''
 }
 
-function getImageFormat(source) {
-  if (source.startsWith('data:image/jpeg')) return 'JPEG'
-  if (source.startsWith('data:image/jpg')) return 'JPEG'
-  return 'PNG'
+function formatDisplayUrl(value, maxLength = 42) {
+  const text = normalizeUrl(value)
+
+  if (!text) {
+    return 'No registrado'
+  }
+
+  if (text.length <= maxLength) {
+    return text
+  }
+
+  const parts = text.split('/')
+
+  if (parts.length >= 3) {
+    const head = `${parts[0]}/${parts[1]}`
+    const tail = parts.at(-1)
+
+    if (head.length + tail.length + 7 <= maxLength) {
+      return `${head}/.../${tail}`
+    }
+  }
+
+  return `${text.slice(0, maxLength - 3)}...`
 }
 
 async function imageToDataUrl(imageSource) {
@@ -47,6 +66,49 @@ async function imageToDataUrl(imageSource) {
   })
 }
 
+async function loadImageElement(source) {
+  return await new Promise((resolve, reject) => {
+    const image = new Image()
+
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('No se pudo cargar la imagen.'))
+    image.src = source
+  })
+}
+
+async function prepareProfileImage(imageSource) {
+  const dataUrl = await imageToDataUrl(imageSource)
+
+  if (!dataUrl || typeof document === 'undefined') {
+    return dataUrl
+  }
+
+  const image = await loadImageElement(dataUrl)
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')
+
+  if (!context) {
+    return dataUrl
+  }
+
+  const size = 900
+  canvas.width = size
+  canvas.height = size
+
+  context.fillStyle = '#ffffff'
+  context.fillRect(0, 0, size, size)
+
+  const scale = Math.max(size / image.naturalWidth, size / image.naturalHeight)
+  const drawWidth = image.naturalWidth * scale
+  const drawHeight = image.naturalHeight * scale
+  const offsetX = (size - drawWidth) / 2
+  const offsetY = (size - drawHeight) / 2
+
+  context.drawImage(image, offsetX, offsetY, drawWidth, drawHeight)
+
+  return canvas.toDataURL('image/jpeg', 0.92)
+}
+
 function addHeader(doc, pageNumber) {
   doc.setFillColor(...ACCENT_COLOR)
   doc.rect(0, 0, PAGE_WIDTH, 16, 'F')
@@ -55,12 +117,12 @@ function addHeader(doc, pageNumber) {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
   doc.text('DevProfile', MARGIN, 28)
-  doc.text(`Página ${pageNumber}`, PAGE_WIDTH - MARGIN, 28, { align: 'right' })
+  doc.text(`Pagina ${pageNumber}`, PAGE_WIDTH - MARGIN, 28, { align: 'right' })
 
   doc.setTextColor(...TEXT_COLOR)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(18)
-  doc.text('Currículum Vitae', MARGIN, 46)
+  doc.text('Curriculum Vitae', MARGIN, 46)
 
   doc.setDrawColor(...BORDER_COLOR)
   doc.setLineWidth(0.8)
@@ -78,44 +140,31 @@ function ensureSpace(doc, cursorY, neededHeight) {
   }
 
   addPage(doc)
-  return 70
+  return 72
 }
 
-function drawWrappedText(doc, text, x, y, width, options = {}) {
+function splitText(doc, value, width, fallback = '') {
+  return doc.splitTextToSize(normalizeText(value, fallback), width)
+}
+
+function measureLines(lines, lineHeight) {
+  return Math.max(lines.length, 1) * lineHeight
+}
+
+function drawLines(doc, lines, x, y, options = {}) {
   const {
     fontSize = 11,
-    lineHeight = 15,
+    lineHeight = 14,
     fontStyle = 'normal',
     color = TEXT_COLOR,
   } = options
-
-  const lines = doc.splitTextToSize(normalizeText(text), width)
 
   doc.setTextColor(...color)
   doc.setFont('helvetica', fontStyle)
   doc.setFontSize(fontSize)
   doc.text(lines, x, y)
 
-  return y + lines.length * lineHeight
-}
-
-function drawLabelValue(doc, label, value, x, y, width, options = {}) {
-  const labelText = `${label}: `
-  const labelWidth = doc.getTextWidth(labelText)
-  const availableWidth = Math.max(40, width - labelWidth)
-  const text = normalizeText(value, 'No registrado')
-  const lines = doc.splitTextToSize(text, availableWidth)
-
-  doc.setTextColor(...MUTED_COLOR)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(options.fontSize ?? 10)
-  doc.text(labelText, x, y)
-
-  doc.setTextColor(...TEXT_COLOR)
-  doc.setFont('helvetica', 'normal')
-  doc.text(lines, x + labelWidth, y)
-
-  return y + lines.length * (options.lineHeight ?? 13)
+  return y + measureLines(lines, lineHeight)
 }
 
 function drawSectionTitle(doc, title, y) {
@@ -131,203 +180,511 @@ function drawSectionTitle(doc, title, y) {
   return y + 18
 }
 
-function drawCard(doc, x, y, height) {
+function drawCard(doc, x, y, width, height) {
   doc.setDrawColor(...BORDER_COLOR)
   doc.setFillColor(...CARD_FILL)
-  doc.roundedRect(x, y, CONTENT_WIDTH, height, 8, 8, 'S')
+  doc.roundedRect(x, y, width, height, 10, 10, 'FD')
+}
+
+function buildContactItem(doc, item, width) {
+  const isLink = Boolean(item.href)
+  const text = isLink
+    ? formatDisplayUrl(item.value)
+    : normalizeText(item.value, 'No registrado')
+  const lines = splitText(doc, text, width)
+
+  return {
+    ...item,
+    isLink,
+    lines,
+    height: 12 + measureLines(lines, 12) + 12,
+  }
+}
+
+function drawContactItem(doc, item, x, y, width) {
+  doc.setTextColor(...MUTED_COLOR)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(8.8)
+  doc.text(item.label.toUpperCase(), x, y)
+
+  const color = item.isLink && normalizeText(item.value) ? ACCENT_COLOR : TEXT_COLOR
+  const style = item.isLink && normalizeText(item.value) ? 'bold' : 'normal'
+  const nextY = drawLines(doc, item.lines, x, y + 14, {
+    fontSize: 10.5,
+    lineHeight: 12,
+    fontStyle: style,
+    color,
+  })
+
+  if (item.isLink && normalizeText(item.href)) {
+    doc.link(x, y + 4, width, measureLines(item.lines, 12) + 8, {
+      url: item.href,
+    })
+  }
+
+  return nextY + 10
+}
+
+function buildSkillBlock(doc, skill, index) {
+  const data = typeof skill === 'string' ? { name: skill } : skill || {}
+  const width = CONTENT_WIDTH - 24
+  const titleLines = splitText(
+    doc,
+    `${index + 1}. ${normalizeText(data.name || data.skill, 'Habilidad')}`,
+    width,
+  )
+
+  const metaParts = []
+  if (normalizeText(data.category)) metaParts.push(`Categoria: ${normalizeText(data.category)}`)
+  if (normalizeText(data.level)) metaParts.push(`Nivel: ${normalizeText(data.level)}`)
+
+  const metaLines = metaParts.length > 0 ? splitText(doc, metaParts.join(' | '), width) : []
+  const descriptionLines = normalizeText(data.description)
+    ? splitText(doc, data.description, width)
+    : []
+
+  let height = 18 + measureLines(titleLines, 13)
+
+  if (metaLines.length > 0) {
+    height += measureLines(metaLines, 11) + 4
+  }
+
+  if (descriptionLines.length > 0) {
+    height += measureLines(descriptionLines, 12) + 6
+  }
+
+  height += 12
+
+  return {
+    titleLines,
+    metaLines,
+    descriptionLines,
+    height,
+  }
+}
+
+function drawSkillBlock(doc, block, y) {
+  drawCard(doc, MARGIN, y - 8, CONTENT_WIDTH, block.height)
+
+  let blockY = y + 6
+  blockY = drawLines(doc, block.titleLines, MARGIN + 12, blockY, {
+    fontSize: 11.5,
+    lineHeight: 13,
+    fontStyle: 'bold',
+  })
+
+  if (block.metaLines.length > 0) {
+    blockY = drawLines(doc, block.metaLines, MARGIN + 12, blockY + 2, {
+      fontSize: 9.6,
+      lineHeight: 11,
+      fontStyle: 'bold',
+      color: ACCENT_COLOR,
+    })
+  }
+
+  if (block.descriptionLines.length > 0) {
+    drawLines(doc, block.descriptionLines, MARGIN + 12, blockY + 3, {
+      fontSize: 10.4,
+      lineHeight: 12,
+    })
+  }
+
+  return y + block.height + 8
+}
+
+function buildProjectBlock(doc, project) {
+  const data = project || {}
+  const width = CONTENT_WIDTH - 24
+  const titleLines = splitText(doc, normalizeText(data.name, 'Proyecto'), width)
+  const descriptionLines = normalizeText(data.description)
+    ? splitText(doc, data.description, width)
+    : []
+  const technologiesLines = normalizeText(data.technologies)
+    ? splitText(doc, `Tecnologias: ${normalizeText(data.technologies)}`, width)
+    : []
+  const repositoryLines = normalizeText(data.repository)
+    ? splitText(doc, `Repositorio: ${formatDisplayUrl(data.repository)}`, width)
+    : []
+  const deployLines = normalizeText(data.deploy)
+    ? splitText(doc, `Demo: ${formatDisplayUrl(data.deploy)}`, width)
+    : []
+
+  let height = 18 + measureLines(titleLines, 13)
+
+  if (descriptionLines.length > 0) {
+    height += measureLines(descriptionLines, 12) + 5
+  }
+
+  if (technologiesLines.length > 0) {
+    height += measureLines(technologiesLines, 11) + 4
+  }
+
+  if (repositoryLines.length > 0) {
+    height += measureLines(repositoryLines, 11) + 4
+  }
+
+  if (deployLines.length > 0) {
+    height += measureLines(deployLines, 11) + 4
+  }
+
+  height += 12
+
+  return {
+    titleLines,
+    descriptionLines,
+    technologiesLines,
+    repositoryLines,
+    deployLines,
+    repository: normalizeText(data.repository),
+    deploy: normalizeText(data.deploy),
+    height,
+  }
+}
+
+function drawLinkBlock(doc, lines, url, x, y) {
+  const nextY = drawLines(doc, lines, x, y, {
+    fontSize: 10,
+    lineHeight: 11,
+    fontStyle: 'bold',
+    color: ACCENT_COLOR,
+  })
+
+  doc.link(x, y - 8, CONTENT_WIDTH - 24, measureLines(lines, 11) + 6, { url })
+  return nextY
+}
+
+function drawProjectBlock(doc, block, y) {
+  drawCard(doc, MARGIN, y - 8, CONTENT_WIDTH, block.height)
+
+  let blockY = y + 6
+  blockY = drawLines(doc, block.titleLines, MARGIN + 12, blockY, {
+    fontSize: 11.5,
+    lineHeight: 13,
+    fontStyle: 'bold',
+  })
+
+  if (block.descriptionLines.length > 0) {
+    blockY = drawLines(doc, block.descriptionLines, MARGIN + 12, blockY + 3, {
+      fontSize: 10.4,
+      lineHeight: 12,
+    })
+  }
+
+  if (block.technologiesLines.length > 0) {
+    blockY = drawLines(doc, block.technologiesLines, MARGIN + 12, blockY + 2, {
+      fontSize: 9.8,
+      lineHeight: 11,
+      fontStyle: 'bold',
+      color: MUTED_COLOR,
+    })
+  }
+
+  if (block.repositoryLines.length > 0) {
+    blockY = drawLinkBlock(doc, block.repositoryLines, block.repository, MARGIN + 12, blockY + 3)
+  }
+
+  if (block.deployLines.length > 0) {
+    drawLinkBlock(doc, block.deployLines, block.deploy, MARGIN + 12, blockY + 3)
+  }
+
+  return y + block.height + 8
+}
+
+function buildEducationBlock(doc, entry) {
+  const data = typeof entry === 'string' ? { program: entry } : entry || {}
+  const width = CONTENT_WIDTH - 24
+  const titleLines = splitText(doc, normalizeText(data.program, 'Programa'), width)
+  const institutionLines = normalizeText(data.institution)
+    ? splitText(doc, normalizeText(data.institution), width)
+    : []
+  const periodLines = normalizeText(data.period)
+    ? splitText(doc, normalizeText(data.period), width)
+    : []
+  const descriptionLines = normalizeText(data.description)
+    ? splitText(doc, normalizeText(data.description), width)
+    : []
+
+  let height = 18 + measureLines(titleLines, 13)
+
+  if (institutionLines.length > 0) {
+    height += measureLines(institutionLines, 12) + 3
+  }
+
+  if (periodLines.length > 0) {
+    height += measureLines(periodLines, 11) + 3
+  }
+
+  if (descriptionLines.length > 0) {
+    height += measureLines(descriptionLines, 12) + 5
+  }
+
+  height += 12
+
+  return {
+    titleLines,
+    institutionLines,
+    periodLines,
+    descriptionLines,
+    height,
+  }
+}
+
+function drawEducationBlock(doc, block, y) {
+  drawCard(doc, MARGIN, y - 8, CONTENT_WIDTH, block.height)
+
+  let blockY = y + 6
+  blockY = drawLines(doc, block.titleLines, MARGIN + 12, blockY, {
+    fontSize: 11.5,
+    lineHeight: 13,
+    fontStyle: 'bold',
+  })
+
+  if (block.institutionLines.length > 0) {
+    blockY = drawLines(doc, block.institutionLines, MARGIN + 12, blockY + 3, {
+      fontSize: 10.4,
+      lineHeight: 12,
+    })
+  }
+
+  if (block.periodLines.length > 0) {
+    blockY = drawLines(doc, block.periodLines, MARGIN + 12, blockY + 2, {
+      fontSize: 9.8,
+      lineHeight: 11,
+      fontStyle: 'bold',
+      color: MUTED_COLOR,
+    })
+  }
+
+  if (block.descriptionLines.length > 0) {
+    drawLines(doc, block.descriptionLines, MARGIN + 12, blockY + 3, {
+      fontSize: 10.4,
+      lineHeight: 12,
+    })
+  }
+
+  return y + block.height + 8
 }
 
 export async function exportCvToPdf(cvData, fileName = 'cv-devprofile.pdf') {
-  const { personalInfo = {}, skills = [], projects = [], education = [] } = cvData || {}
+  const {
+    personalInfo = {},
+    skills = [],
+    projects = [],
+    education = [],
+    languages = [],
+  } = cvData || {}
   const doc = new jsPDF('p', 'pt', 'a4')
 
   addHeader(doc, 1)
-  let cursorY = 82
 
-  const profileImage = await imageToDataUrl(personalInfo.profileImage).catch(() => null)
-  const imageSize = 104
+  const profileImage = await prepareProfileImage(personalInfo.profileImage).catch(() => null)
+
+  let cursorY = 82
+  const imageSize = 96
   const imageX = PAGE_WIDTH - MARGIN - imageSize
+  const imageTop = 78
+
+  doc.setDrawColor(...BORDER_COLOR)
+  doc.setFillColor(255, 255, 255)
+  doc.roundedRect(imageX, imageTop, imageSize, imageSize, 12, 12, 'FD')
 
   if (profileImage) {
-    doc.setDrawColor(...BORDER_COLOR)
-    doc.setFillColor(255, 255, 255)
-    doc.roundedRect(imageX, cursorY - 6, imageSize, imageSize, 10, 10, 'S')
-    doc.addImage(profileImage, getImageFormat(profileImage), imageX + 4, cursorY - 2, imageSize - 8, imageSize - 8)
+    doc.addImage(profileImage, 'JPEG', imageX + 5, imageTop + 5, imageSize - 10, imageSize - 10)
   } else {
-    doc.setDrawColor(...BORDER_COLOR)
-    doc.setFillColor(255, 255, 255)
-    doc.roundedRect(imageX, cursorY - 6, imageSize, imageSize, 10, 10, 'S')
     doc.setTextColor(...MUTED_COLOR)
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(26)
-    doc.text('CV', imageX + imageSize / 2, cursorY + 52, { align: 'center' })
+    doc.setFontSize(24)
+    doc.text('CV', imageX + imageSize / 2, imageTop + 57, { align: 'center' })
   }
 
-  const textWidth = CONTENT_WIDTH - imageSize - 24
-  cursorY = drawWrappedText(
+  const textWidth = CONTENT_WIDTH - imageSize - 28
+  let heroY = cursorY + 10
+
+  heroY = drawLines(
     doc,
-    normalizeText(personalInfo.fullName, 'Nombre completo'),
+    splitText(doc, personalInfo.fullName, textWidth, 'Nombre completo'),
     MARGIN,
-    cursorY + 6,
-    textWidth,
-    { fontSize: 22, lineHeight: 26, fontStyle: 'bold' }
+    heroY,
+    { fontSize: 22, lineHeight: 24, fontStyle: 'bold' },
   )
 
-  cursorY = drawWrappedText(
+  heroY = drawLines(
     doc,
-    normalizeText(personalInfo.profession, 'Profesión'),
+    splitText(doc, personalInfo.profession, textWidth, 'Profesion'),
     MARGIN,
-    cursorY + 2,
-    textWidth,
-    { fontSize: 13, lineHeight: 16, fontStyle: 'italic', color: ACCENT_COLOR }
+    heroY + 4,
+    { fontSize: 13, lineHeight: 16, fontStyle: 'italic', color: ACCENT_COLOR },
   )
 
-  cursorY = drawWrappedText(
+  heroY = drawLines(
     doc,
-    normalizeText(personalInfo.city, 'Ciudad'),
+    splitText(doc, personalInfo.city, textWidth, 'Ciudad'),
     MARGIN,
-    cursorY + 1,
-    textWidth,
-    { fontSize: 11, lineHeight: 14, color: MUTED_COLOR }
+    heroY + 1,
+    { fontSize: 11, lineHeight: 14, color: MUTED_COLOR },
   )
 
-  cursorY += 14
+  const heroBottom = Math.max(heroY + 8, imageTop + imageSize + 14)
   doc.setDrawColor(...BORDER_COLOR)
-  doc.line(MARGIN, cursorY, PAGE_WIDTH - MARGIN, cursorY)
-  cursorY += 18
+  doc.line(MARGIN, heroBottom, PAGE_WIDTH - MARGIN, heroBottom)
+  cursorY = heroBottom + 18
 
+  const contactLeftWidth = 180
+  const contactGap = 24
+  const contactRightX = MARGIN + contactLeftWidth + contactGap
+  const contactRightWidth = CONTENT_WIDTH - contactLeftWidth - contactGap
+
+  const leftItems = [
+    buildContactItem(doc, {
+      label: 'Correo',
+      value: personalInfo.email,
+      href: normalizeText(personalInfo.email) ? `mailto:${normalizeText(personalInfo.email)}` : '',
+    }, contactLeftWidth),
+    buildContactItem(doc, {
+      label: 'Telefono',
+      value: personalInfo.phone,
+      href: normalizeText(personalInfo.phone) ? `tel:${normalizeText(personalInfo.phone)}` : '',
+    }, contactLeftWidth),
+  ]
+
+  const rightItems = [
+    buildContactItem(doc, {
+      label: 'GitHub',
+      value: personalInfo.github,
+      href: normalizeText(personalInfo.github),
+    }, contactRightWidth),
+    buildContactItem(doc, {
+      label: 'LinkedIn',
+      value: personalInfo.linkedin,
+      href: normalizeText(personalInfo.linkedin),
+    }, contactRightWidth),
+    buildContactItem(doc, {
+      label: 'Portafolio',
+      value: personalInfo.portfolio,
+      href: normalizeText(personalInfo.portfolio),
+    }, contactRightWidth),
+  ]
+
+  const contactHeight = Math.max(
+    leftItems.reduce((sum, item) => sum + item.height, 0),
+    rightItems.reduce((sum, item) => sum + item.height, 0),
+  )
+
+  cursorY = ensureSpace(doc, cursorY, contactHeight + 26)
   cursorY = drawSectionTitle(doc, 'Contacto y enlaces', cursorY)
-  cursorY = ensureSpace(doc, cursorY, 56)
-
-  const leftColumnWidth = 250
-  const rightColumnX = MARGIN + leftColumnWidth + 24
-  const rightColumnWidth = CONTENT_WIDTH - leftColumnWidth - 24
 
   let leftY = cursorY
-  leftY = drawLabelValue(doc, 'Correo', personalInfo.email, MARGIN, leftY, leftColumnWidth)
-  leftY = drawLabelValue(doc, 'Teléfono', personalInfo.phone, MARGIN, leftY + 2, leftColumnWidth)
+  leftItems.forEach((item) => {
+    leftY = drawContactItem(doc, item, MARGIN, leftY, contactLeftWidth)
+  })
 
   let rightY = cursorY
-  rightY = drawLabelValue(doc, 'GitHub', normalizeUrl(personalInfo.github), rightColumnX, rightY, rightColumnWidth)
-  rightY = drawLabelValue(doc, 'LinkedIn', normalizeUrl(personalInfo.linkedin), rightColumnX, rightY + 2, rightColumnWidth)
-  rightY = drawLabelValue(doc, 'Portafolio', normalizeUrl(personalInfo.portfolio), rightColumnX, rightY + 2, rightColumnWidth)
+  rightItems.forEach((item) => {
+    rightY = drawContactItem(doc, item, contactRightX, rightY, contactRightWidth)
+  })
 
-  cursorY = Math.max(leftY, rightY) + 18
+  cursorY = Math.max(leftY, rightY) + 6
 
-  cursorY = drawSectionTitle(doc, 'Perfil profesional', cursorY)
-  const profileText = normalizeText(
+  const profileLines = splitText(
+    doc,
     personalInfo.profile,
-    'Todavía no has escrito una descripción profesional.'
+    CONTENT_WIDTH,
+    'Todavia no has escrito una descripcion profesional.',
   )
-  const profileLines = doc.splitTextToSize(profileText, CONTENT_WIDTH)
-  cursorY = ensureSpace(doc, cursorY, profileLines.length * 14 + 8)
-  doc.setTextColor(...TEXT_COLOR)
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(11)
-  doc.text(profileLines, MARGIN, cursorY)
-  cursorY += profileLines.length * 14 + 16
 
+  cursorY = ensureSpace(doc, cursorY, measureLines(profileLines, 14) + 26)
+  cursorY = drawSectionTitle(doc, 'Perfil profesional', cursorY)
+  cursorY = drawLines(doc, profileLines, MARGIN, cursorY, {
+    fontSize: 10.8,
+    lineHeight: 14,
+  }) + 8
+
+  const firstSkillBlock = skills.length > 0 ? buildSkillBlock(doc, skills[0], 0) : null
+  cursorY = ensureSpace(doc, cursorY, (firstSkillBlock?.height || 18) + 26)
   cursorY = drawSectionTitle(doc, 'Habilidades', cursorY)
+
   if (skills.length === 0) {
-    cursorY = drawWrappedText(doc, 'No hay habilidades registradas.', MARGIN, cursorY, CONTENT_WIDTH, {
+    cursorY = drawLines(doc, ['No hay habilidades registradas.'], MARGIN, cursorY, {
       fontSize: 11,
       lineHeight: 14,
       color: MUTED_COLOR,
-    })
-    cursorY += 8
+    }) + 8
   } else {
     skills.forEach((skill, index) => {
-      const skillName = normalizeText(skill.name || skill.skill, 'Habilidad')
-      const parts = [skillName]
-      if (skill.category) parts.push(`Categoría: ${skill.category}`)
-      if (skill.level) parts.push(`Nivel: ${skill.level}`)
-      if (skill.description) parts.push(skill.description)
-
-      const lines = doc.splitTextToSize(parts.join(' | '), CONTENT_WIDTH - 24)
-      const blockHeight = lines.length * 13 + 20
-      cursorY = ensureSpace(doc, cursorY, blockHeight)
-
-      drawCard(doc, MARGIN, cursorY - 10, blockHeight)
-      doc.setTextColor(...TEXT_COLOR)
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(11)
-      doc.text(`${index + 1}. ${skillName}`, MARGIN + 12, cursorY + 4)
-
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(10.5)
-      doc.text(lines, MARGIN + 12, cursorY + 18)
-      cursorY += blockHeight + 10
+      const block = index === 0 ? firstSkillBlock : buildSkillBlock(doc, skill, index)
+      cursorY = ensureSpace(doc, cursorY, block.height + 8)
+      cursorY = drawSkillBlock(doc, block, cursorY)
     })
   }
 
+  const firstProjectBlock = projects.length > 0 ? buildProjectBlock(doc, projects[0]) : null
+  cursorY = ensureSpace(doc, cursorY, (firstProjectBlock?.height || 18) + 26)
   cursorY = drawSectionTitle(doc, 'Proyectos', cursorY)
+
   if (projects.length === 0) {
-    cursorY = drawWrappedText(doc, 'No hay proyectos registrados.', MARGIN, cursorY, CONTENT_WIDTH, {
+    cursorY = drawLines(doc, ['No hay proyectos registrados.'], MARGIN, cursorY, {
       fontSize: 11,
       lineHeight: 14,
       color: MUTED_COLOR,
-    })
-    cursorY += 8
+    }) + 8
   } else {
-    for (const project of projects) {
-      const title = normalizeText(project.name, 'Proyecto')
-      const description = normalizeText(project.description)
-      const technologies = normalizeText(project.technologies)
-      const links = [project.repository, project.deploy].map(normalizeUrl).filter(Boolean)
-      const contentLines = []
-
-      if (description) contentLines.push(description)
-      if (technologies) contentLines.push(`Tecnologías: ${technologies}`)
-      if (links.length > 0) contentLines.push(`Enlaces: ${links.join(' | ')}`)
-
-      const lines = doc.splitTextToSize(contentLines.join('\n'), CONTENT_WIDTH - 24)
-      const blockHeight = lines.length * 13 + 20
-      cursorY = ensureSpace(doc, cursorY, blockHeight)
-
-      drawCard(doc, MARGIN, cursorY - 10, blockHeight)
-      doc.setTextColor(...TEXT_COLOR)
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(11.5)
-      doc.text(title, MARGIN + 12, cursorY + 4)
-
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(10.5)
-      doc.text(lines, MARGIN + 12, cursorY + 18)
-
-      cursorY += blockHeight + 10
-    }
+    projects.forEach((project, index) => {
+      const block = index === 0 ? firstProjectBlock : buildProjectBlock(doc, project)
+      cursorY = ensureSpace(doc, cursorY, block.height + 8)
+      cursorY = drawProjectBlock(doc, block, cursorY)
+    })
   }
 
-  cursorY = drawSectionTitle(doc, 'Educación', cursorY)
+  const firstEducationBlock = education.length > 0 ? buildEducationBlock(doc, education[0]) : null
+  cursorY = ensureSpace(doc, cursorY, (firstEducationBlock?.height || 18) + 26)
+  cursorY = drawSectionTitle(doc, 'Educacion', cursorY)
+
   if (education.length === 0) {
-    cursorY = drawWrappedText(doc, 'No hay registros educativos.', MARGIN, cursorY, CONTENT_WIDTH, {
+    cursorY = drawLines(doc, ['No hay registros educativos.'], MARGIN, cursorY, {
+      fontSize: 11,
+      lineHeight: 14,
+      color: MUTED_COLOR,
+    }) + 8
+  } else {
+    education.forEach((entry, index) => {
+      const block = index === 0 ? firstEducationBlock : buildEducationBlock(doc, entry)
+      cursorY = ensureSpace(doc, cursorY, block.height + 8)
+      cursorY = drawEducationBlock(doc, block, cursorY)
+    })
+  }
+
+  const firstLanguageBlock = languages.length > 0
+    ? buildEducationBlock(doc, {
+        program: languages[0].name,
+        institution: languages[0].level,
+        period: '',
+        description: languages[0].description,
+      })
+    : null
+
+  cursorY = ensureSpace(doc, cursorY, (firstLanguageBlock?.height || 18) + 26)
+  cursorY = drawSectionTitle(doc, 'Idiomas', cursorY)
+
+  if (languages.length === 0) {
+    drawLines(doc, ['No hay idiomas registrados.'], MARGIN, cursorY, {
       fontSize: 11,
       lineHeight: 14,
       color: MUTED_COLOR,
     })
   } else {
-    for (const entry of education) {
-      const program = normalizeText(entry.program, 'Programa')
-      const institution = normalizeText(entry.institution)
-      const period = normalizeText(entry.period)
-      const description = normalizeText(entry.description)
-      const contentLines = [institution, period, description].filter(Boolean)
-      const lines = doc.splitTextToSize(contentLines.join('\n'), CONTENT_WIDTH - 24)
-      const blockHeight = lines.length * 13 + 20
-      cursorY = ensureSpace(doc, cursorY, blockHeight)
+    languages.forEach((language, index) => {
+      const block = index === 0
+        ? firstLanguageBlock
+        : buildEducationBlock(doc, {
+            program: language.name,
+            institution: language.level,
+            period: '',
+            description: language.description,
+          })
 
-      drawCard(doc, MARGIN, cursorY - 10, blockHeight)
-      doc.setTextColor(...TEXT_COLOR)
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(11.5)
-      doc.text(program, MARGIN + 12, cursorY + 4)
-
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(10.5)
-      doc.text(lines, MARGIN + 12, cursorY + 18)
-
-      cursorY += blockHeight + 10
-    }
+      cursorY = ensureSpace(doc, cursorY, block.height + 8)
+      cursorY = drawEducationBlock(doc, block, cursorY)
+    })
   }
 
   doc.save(fileName)

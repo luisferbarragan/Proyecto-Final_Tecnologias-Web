@@ -1,14 +1,21 @@
 import { forwardRef } from 'react'
 import { useCV } from '../context/CVContext'
+import { validateUrl } from '../utils/validations'
 
 const CVPreview = forwardRef(function CVPreview(_, ref) {
   const { cvData } = useCV()
-  const { personalInfo, skills, projects, education } = cvData
+  const { personalInfo, skills, projects, education, languages } = cvData
+  const hasDisplayableProfileImage =
+    Boolean(personalInfo.profileImage) &&
+    (
+      String(personalInfo.profileImage).startsWith('data:image/') ||
+      validateUrl(String(personalInfo.profileImage))
+    )
 
   return (
     <article ref={ref} className="editor-card preview-card">
       <div className="preview-header">
-        {personalInfo.profileImage ? (
+        {hasDisplayableProfileImage ? (
           <img
             className="preview-avatar"
             src={personalInfo.profileImage}
@@ -20,7 +27,7 @@ const CVPreview = forwardRef(function CVPreview(_, ref) {
 
         <div>
           <h2>{personalInfo.fullName || 'Nombre completo'}</h2>
-          <p>{personalInfo.profession || 'Profesión'}</p>
+          <p>{personalInfo.profession || 'Profesion'}</p>
           <p>{personalInfo.city || 'Ciudad'}</p>
         </div>
       </div>
@@ -29,7 +36,7 @@ const CVPreview = forwardRef(function CVPreview(_, ref) {
         <div>
           <h3>Contacto</h3>
           <p>{personalInfo.email || 'Correo'}</p>
-          <p>{personalInfo.phone || 'Teléfono'}</p>
+          <p>{personalInfo.phone || 'Telefono'}</p>
         </div>
 
         <div>
@@ -71,7 +78,7 @@ const CVPreview = forwardRef(function CVPreview(_, ref) {
         <h3>Perfil</h3>
         <p className="preview-profile-text">
           {personalInfo.profile ||
-            'Todavía no has escrito una descripción profesional.'}
+            'Todavia no has escrito una descripcion profesional.'}
         </p>
       </div>
 
@@ -83,7 +90,7 @@ const CVPreview = forwardRef(function CVPreview(_, ref) {
             {skills.map((skill, index) => (
               <div className="preview-item" key={skill.id || index}>
                 <strong>{skill.name || skill.skill}</strong>
-                {skill.category && <p>Categoría: {skill.category}</p>}
+                {skill.category && <p>Categoria: {skill.category}</p>}
                 {skill.level && <p>Nivel: {skill.level}</p>}
                 {skill.description && <p>{skill.description}</p>}
               </div>
@@ -103,7 +110,7 @@ const CVPreview = forwardRef(function CVPreview(_, ref) {
               <div className="preview-item" key={project.id}>
                 <strong>{project.name}</strong>
                 <p>{project.description}</p>
-                <p>Tecnologías: {project.technologies}</p>
+                <p>Tecnologias: {project.technologies}</p>
 
                 {project.repository && (
                   <p>
@@ -137,7 +144,7 @@ const CVPreview = forwardRef(function CVPreview(_, ref) {
       </div>
 
       <div>
-        <h3>Educación</h3>
+        <h3>Educacion</h3>
 
         {education.length > 0 ? (
           <div className="preview-list">
@@ -152,6 +159,24 @@ const CVPreview = forwardRef(function CVPreview(_, ref) {
           </div>
         ) : (
           <p>No hay registros educativos.</p>
+        )}
+      </div>
+
+      <div>
+        <h3>Idiomas</h3>
+
+        {languages.length > 0 ? (
+          <div className="preview-list">
+            {languages.map((language, index) => (
+              <div className="preview-item" key={language.id || index}>
+                <strong>{language.name}</strong>
+                <p>Nivel: {language.level}</p>
+                {language.description && <p>{language.description}</p>}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p>No hay idiomas registrados.</p>
         )}
       </div>
     </article>

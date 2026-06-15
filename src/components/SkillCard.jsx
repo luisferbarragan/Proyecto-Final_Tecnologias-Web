@@ -1,17 +1,32 @@
-function SkillCard({ skill }) {
+function SkillCard({ skill, onEdit, onDelete }) {
   return (
     <article className="skill-card">
-      <h3>{skill.name}</h3>
+      <div className="skill-card-header">
+        <h3>{skill.name}</h3>
+        {skill.level && <span className="skill-badge">{skill.level}</span>}
+      </div>
 
-      <p>
-        <strong>Categoría:</strong> {skill.category}
-      </p>
+      {skill.category && <p className="skill-card-category">{skill.category}</p>}
 
-      <p>
-        <strong>Nivel:</strong> {skill.level}
-      </p>
+      {skill.description && <p className="skill-card-copy">{skill.description}</p>}
 
-      <p>{skill.description}</p>
+      <div className="item-actions">
+        <button
+          className="item-action-button item-action-button--edit"
+          type="button"
+          onClick={() => onEdit(skill)}
+        >
+          Editar
+        </button>
+
+        <button
+          className="item-action-button item-action-button--delete"
+          type="button"
+          onClick={() => onDelete(skill.id)}
+        >
+          Eliminar
+        </button>
+      </div>
     </article>
   )
 }
