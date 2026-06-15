@@ -33,9 +33,36 @@ function CVPreview() {
 
         <div>
           <h3>Enlaces profesionales</h3>
-          <p>{personalInfo.github || 'GitHub'}</p>
-          <p>{personalInfo.linkedin || 'LinkedIn'}</p>
-          <p>{personalInfo.portfolio || 'Portafolio'}</p>
+
+          {personalInfo.github ? (
+            <p>
+              <a href={personalInfo.github} target="_blank" rel="noreferrer">
+                GitHub
+              </a>
+            </p>
+          ) : (
+            <p>GitHub</p>
+          )}
+
+          {personalInfo.linkedin ? (
+            <p>
+              <a href={personalInfo.linkedin} target="_blank" rel="noreferrer">
+                LinkedIn
+              </a>
+            </p>
+          ) : (
+            <p>LinkedIn</p>
+          )}
+
+          {personalInfo.portfolio ? (
+            <p>
+              <a href={personalInfo.portfolio} target="_blank" rel="noreferrer">
+                Portafolio
+              </a>
+            </p>
+          ) : (
+            <p>Portafolio</p>
+          )}
         </div>
       </div>
 
@@ -55,7 +82,6 @@ function CVPreview() {
             {skills.map((skill, index) => (
               <div className="preview-item" key={skill.id || index}>
                 <strong>{skill.name || skill.skill}</strong>
-
                 {skill.category && <p>Categoría: {skill.category}</p>}
                 {skill.level && <p>Nivel: {skill.level}</p>}
                 {skill.description && <p>{skill.description}</p>}
@@ -80,7 +106,6 @@ function CVPreview() {
 
                 {project.repository && (
                   <p>
-                    Repositorio:{' '}
                     <a href={project.repository} target="_blank" rel="noreferrer">
                       Ver repositorio
                     </a>
@@ -89,7 +114,6 @@ function CVPreview() {
 
                 {project.deploy && (
                   <p>
-                    Deploy:{' '}
                     <a href={project.deploy} target="_blank" rel="noreferrer">
                       Ver proyecto
                     </a>
