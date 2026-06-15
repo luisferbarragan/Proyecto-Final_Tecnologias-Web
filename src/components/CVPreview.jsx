@@ -1,11 +1,12 @@
+import { forwardRef } from 'react'
 import { useCV } from '../context/CVContext'
 
-function CVPreview() {
+const CVPreview = forwardRef(function CVPreview(_, ref) {
   const { cvData } = useCV()
   const { personalInfo, skills, projects, education } = cvData
 
   return (
-    <article className="editor-card preview-card">
+    <article ref={ref} className="editor-card preview-card">
       <div className="preview-header">
         {personalInfo.profileImage ? (
           <img
@@ -155,6 +156,6 @@ function CVPreview() {
       </div>
     </article>
   )
-}
+})
 
 export default CVPreview
