@@ -5,11 +5,14 @@ import Editor from './pages/Editor'
 import Preview from './pages/Preview'
 import Dashboard from './pages/Dashboard'
 import About from './pages/About'
+import { useTheme } from './hooks/useTheme'
 
 function App() {
+  const { theme, toggleTheme } = useTheme()
+
   return (
     <>
-      <Navbar />
+      <Navbar theme={theme} onToggleTheme={toggleTheme} />
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
